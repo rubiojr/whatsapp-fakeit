@@ -32,7 +32,7 @@ import (
 	"log"
 	mrand "math/rand"
 	"os"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -488,10 +488,7 @@ func scaledCount(ref int64, scale float64) int64 {
 	if ref == 0 {
 		return 0
 	}
-	n := int64(float64(ref) * scale)
-	if n < 1 {
-		n = 1
-	}
+	n := max(int64(float64(ref)*scale), 1)
 	return n
 }
 
@@ -1128,7 +1125,7 @@ func genMessageMentions(tx *sql.Tx, data *sourceData) error {
 			continue
 		}
 		nmen := 1 + rng.Intn(3)
-		for i := 0; i < nmen; i++ {
+		for range nmen {
 			jid := phones[rng.Intn(len(phones))]
 			_, _ = stmt.Exec(m.ID, jid, faker.FirstName())
 		}
@@ -1169,7 +1166,7 @@ func genMessageAddOn(tx *sql.Tx, data *sourceData) error {
 		phones = []int64{meJIDID}
 	}
 
-	for i := int64(0); i < n; i++ {
+	for range n {
 		m := data.messages[rng.Intn(len(data.messages))]
 		fromMe := int64(rng.Intn(2))
 		sender := phones[rng.Intn(len(phones))]
@@ -1221,7 +1218,7 @@ func genReceipts(tx *sql.Tx, data *sourceData) error {
 		outgoing = data.messages
 	}
 
-	for i := int64(0); i < n; i++ {
+	for range n {
 		m := outgoing[rng.Intn(len(outgoing))]
 		recipient := phones[rng.Intn(len(phones))]
 		base := m.Timestamp + int64(1000+rng.Intn(60000))
@@ -1247,7 +1244,7 @@ func genReceipts(tx *sql.Tx, data *sourceData) error {
 			VALUES (?, ?, ?)`)
 		if err == nil {
 			defer devStmt.Close()
-			for i := int64(0); i < nDev; i++ {
+			for range nDev {
 				m := outgoing[rng.Intn(len(outgoing))]
 				recipient := phones[rng.Intn(len(phones))]
 				ts := m.Timestamp + int64(rng.Intn(60000))
@@ -1277,7 +1274,7 @@ func genStatusTable(tx *sql.Tx, data *sourceData) error {
 		return nil
 	}
 	used := map[int64]bool{}
-	for i := int64(0); i < n; i++ {
+	for range n {
 		if len(used) >= len(phones) {
 			break
 		}
@@ -1317,7 +1314,7 @@ func genCallLogs(tx *sql.Tx, data *sourceData) error {
 		if len(phones) == 0 {
 			return nil
 		}
-		for i := int64(0); i < n; i++ {
+		for range n {
 			jid := phones[rng.Intn(len(phones))]
 			ts := time.Now().UnixMilli() - int64(rng.Intn(86400000*30))
 			_, _ = stmt.Exec(jid, rng.Intn(2), ts)
@@ -1330,7 +1327,7 @@ func genCallLogs(tx *sql.Tx, data *sourceData) error {
 	if len(phones) == 0 {
 		return nil
 	}
-	for i := int64(0); i < n; i++ {
+	for range n {
 		jid := phones[rng.Intn(len(phones))]
 		ts := time.Now().UnixMilli() - int64(rng.Intn(86400000*30))
 		fromMe := int64(rng.Intn(2))
@@ -1379,8 +1376,8 @@ func genLabels(tx *sql.Tx, data *sourceData) error {
 				for k := range labelIDMap {
 					labelIDs = append(labelIDs, k)
 				}
-				sort.Slice(labelIDs, func(i, j int) bool { return labelIDs[i] < labelIDs[j] })
-				for i := int64(0); i < nLink; i++ {
+				slices.Sort(labelIDs)
+				for range nLink {
 					_, _ = linkStmt.Exec(
 						labelIDs[rng.Intn(len(labelIDs))],
 						phones[rng.Intn(len(phones))],
@@ -1483,7 +1480,7 @@ func genGroupParticipants(tx *sql.Tx, data *sourceData) error {
 	for _, g := range groups {
 		members := minInt(per, len(otherPhones))
 		perm := rng.Perm(len(otherPhones))
-		for i := 0; i < members; i++ {
+		for i := range members {
 			rank := 0
 			if i == 0 {
 				rank = 2 // admin/owner
